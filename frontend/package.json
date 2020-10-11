@@ -1,0 +1,23 @@
+{
+  "name": "journal",
+  "version": "1.0.0",
+  "description": "A basic journaling application",
+  "main": "index.js",
+  "dependencies": {
+    "@reduxjs/toolkit": "^1.4.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kylerlittle/react-redux-sagas-flask-boilerplate.git"
+  },
+  "author": "kylerlittle",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kylerlittle/react-redux-sagas-flask-boilerplate/issues"
+  },
+  "homepage": "https://github.com/kylerlittle/react-redux-sagas-flask-boilerplate#readme"
+}
