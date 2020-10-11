@@ -100,13 +100,16 @@ export function submitJournal(text) {
 #### `reducers/JournalReducer.js`
 Reducers specify how the application's state changes in response to actions sent to the store. In this case, we need to specify how the state should change in response to a `submitJournal` action.
 ```javascript
-const initialState = [];
+const initialState = {
+    journalEntries: [],
+};
+
 function journalReducer(state = initialState, action) {
     switch (action.type) {
         case SUBMIT_JOURNAL:
             // Stub code
-            return [...state, {
-                ...
+            return { ...state, journalEntries: {
+                ...state.journalEntries,
                 text: action.text,
                 ...
             }];
@@ -128,9 +131,7 @@ const JournalContainer = connect(mapStateToProps, mapDispatchToProps)(Journal)
 Now, we need to ensure our application specifies its reducers
 ```javascript
 export default configureStore({
-  reducer: {
-    journalEntries: journalReducer,
-  },
+  reducer: journalReducer,
 });
 ```
 
@@ -150,7 +151,7 @@ source venv/bin/activate # activate virtual environment
 pip install flask
 ```
 
-Now let's set up a very very simply Flask app.
+Now let's set up a very very simple Flask app.
 ```
 mkdir journalengine
 echo "from flask import Flask\n\napp = Flask(__name__)\n\nfrom journalengine import routes\n" > journalengine/__init__.py
@@ -166,12 +167,35 @@ flask run
 
 Now, let's quickly make a route that will create our `JournalEntry` object from the user. We'll accept a payload with text, and return a payload with text, date, id, and mood.
 ```python
-
+@app.route('/', methods=['POST'])
+def index():
+    if request.method == 'POST':
+        # Get journal entry text JSON
+        journal_entry_text = request.json['text']
+        
+        # Create JournalEntry Object
+        journal_entry = {
+            'id': next(counter),
+            'timeCreated': strftime("%I:%M:%S %p", gmtime()),
+            'text': journal_entry_text,
+            'mood': predict_mood(journal_entry_text)
+        }
+        
+        # Return as JSON
+        return jsonify(journal_entry)
+    else:
+        return 'ERROR - only accepting POST requests'
 ```
 
 Lastly, because we're running the frontend and backend on two different ports, we'll have to enable CORS.
 ```
 pip install flask-cors
+```
+
+Wrap your request handler (index functin) with the `@cross_origin()` decorator and where you instantiated your Flask app, add the following immediately below:
+```python
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 ```
 
 ### Set Up Sagas
@@ -182,6 +206,81 @@ mkdir saga
 touch saga/sagas.js
 ```
 
+Update your `store.js` file to look like:
+```javascript
+import journalReducer from '../reducers/JournalReducer';
+import createSagaMiddleware from 'redux-saga'
+import { createStore, applyMiddleware } from 'redux'
+import rootSaga from '../saga/sagas'
+
+// Create the saga middleware
+const sagaMiddleware = createSagaMiddleware()
+
+// Mount it on the Store
+const store = createStore(
+  journalReducer,
+  applyMiddleware(sagaMiddleware)
+);
+
+// Then run the root saga
+sagaMiddleware.run(rootSaga)
+
+export default store;
+```
+
+Note, you will need to create a `rootSaga` in `sagas.js`
+
+Let this be:
+```javascript
+function* handleSubmitJournal(action) {}
+function* watchForJournalActions() {
+    yield takeLatest(SUBMIT_JOURNAL, handleSubmitJournal);
+}
+
+export default function* rootSaga() {
+    yield all([watchForJournalActions()]);
+}
+```
+
+The syntax may look weird... but it's actually quite simple. `yield all` says to wait for all Sagas in the list you pass it to complete. `takeLatest` inside `watchForJournalActions` forks a saga task in the background anytime `SUBMIT_JOURNAL` pattern is matched and uses `handleSubmitJournal` as the callback. In this way, it's constantly waiting. Next, let's write that handler.
+
+```javascript
+function* handleSubmitJournal(action) {
+    // Action contains journal entry
+    const journalText = _.pick(action, 'text');
+
+    // Send to backend
+    const journalEntry = yield fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(journalText)
+    })
+    .then(response => response.json());
+
+    // Update Redux Store
+    yield put({ type: UPDATE_JOURNAL_ENTRIES, journalEntry });
+}
+```
+
+Note - in order to update the Redux Store, I created a new action. Since the `SUBMIT_JOURNAL` action is now being handled by the Saga, we can ignore it in our reducer. Your reducer should now look like:
+```javascript
+function journalReducer(state = initialState, action) {
+    switch (action.type) {
+        case UPDATE_JOURNAL_ENTRIES:
+            return {
+                ...state,
+                journalEntries: [...state.journalEntries, action.journalEntry],
+            };
+        case SUBMIT_JOURNAL:
+        default:
+            return state;
+    }
+};
+```
+
+Awesome! We should be good to go.
 
 ## Closing Thoughts
 This is just a demo for proof-of-concept and to hopefully teach y'all a few new technologies. In practice, you'd probably want to implement things differently. For instance, you would almost certainly prefer to have your journal entries stored in the backend; otherwise, they will not persist.
