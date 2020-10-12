@@ -2,7 +2,7 @@ from journalengine import app
 from flask import request, jsonify
 import itertools
 from datetime import datetime
-from time import gmtime, strftime
+from time import localtime, strftime
 from flask_cors import cross_origin
 
 counter = itertools.count()
@@ -21,7 +21,7 @@ def index():
         # Create JournalEntry Object
         journal_entry = {
             'id': next(counter),
-            'timeCreated': strftime("%I:%M:%S %p", gmtime()),
+            'timeCreated': strftime("%I:%M:%S %p", localtime()),
             'text': journal_entry_text,
             'mood': predict_mood(journal_entry_text)
         }
