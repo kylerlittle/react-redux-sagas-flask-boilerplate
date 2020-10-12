@@ -124,12 +124,32 @@ The cool part about Redux is that the `Journal.js` component is independent of t
 
 You define `mapDispatchToProps` and `mapStateToProps` to specify callbacks and props you want to pass to your component. In this file, you have access to the Redux Store. Connect them using
 ```javascript
+import { submitJournal } from '../actions/JournalActions'
+import { connect } from 'react-redux'
+import Journal from '../components/Journal'
+
+const mapStateToProps = state => {
+    return {
+        journalEntries: state.journalEntries,
+    }
+}
+
+const mapDispatchToProps = dispatch => {
+    return {
+        onSubmitJournalEntry: text => {
+            dispatch(submitJournal(text))
+        }
+    }
+}
+
 const JournalContainer = connect(mapStateToProps, mapDispatchToProps)(Journal)
 ```
 
 #### `app/store.js`
 Now, we need to ensure our application specifies its reducers
 ```javascript
+import { configureStore } from '@reduxjs/toolkit';
+import journalReducer from '../reducers/JournalReducer';
 export default configureStore({
   reducer: journalReducer,
 });

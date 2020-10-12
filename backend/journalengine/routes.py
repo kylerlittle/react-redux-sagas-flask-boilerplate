@@ -16,6 +16,7 @@ def predict_mood(text):
 def index():
     if request.method == 'POST':
         # Get journal entry text JSON
+        # { text: 'some string from user' }
         journal_entry_text = request.json['text']
         
         # Create JournalEntry Object
